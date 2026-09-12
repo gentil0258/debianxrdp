@@ -2,50 +2,27 @@ FROM debian:bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN dpkg --add-architecture i386
-
-RUN echo "deb http://deb.debian.org/debian bookworm main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free" >> /etc/apt/sources.list
-
 RUN apt-get update && apt-get install -y \
-    xrdp \
-    xfce4 \
-    xfce4-goodies \
-    xorg \
-    dbus-x11 \
+    openssh-server \
     sudo \
     curl \
     wget \
     nano \
     net-tools \
-    policykit-1 \
-    pulseaudio \
-    pulseaudio-utils \
-    wine \
-    wine32 \
-    firefox-esr && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    htop \
+    git \
+    python3 \
+    python3-pip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set root password
 RUN echo "root:root" | chpasswd
 
-RUN sed -i 's/^allowed_users=.*/allowed_users=anybody/' /etc/X11/Xwrapper.config || echo "allowed_users=anybody" >> /etc/X11/Xwrapper.config
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-RUN echo "startxfce4" > /root/.xsession && chmod 700 /root/.xsession
+RUN mkdir -p /run/sshd
 
-# Generate machine-id for dbus
-RUN mkdir -p /var/run/dbus && dbus-uuidgen > /var/lib/dbus/machine-id
+RUN echo '#!/bin/bash\n/usr/sbin/sshd -D' > /start.sh && chmod +x /start.sh
 
-RUN sed -i 's/crypt_level=high/crypt_level=low/' /etc/xrdp/xrdp.ini && \
-    sed -i 's/security_layer=negotiate/security_layer=rdp/' /etc/xrdp/xrdp.ini && \
-    echo "exec startxfce4" > /etc/xrdp/startwm.sh && chmod +x /etc/xrdp/startwm.sh
-
-RUN adduser xrdp ssl-cert
-
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
-
-EXPOSE 3389
+EXPOSE 22
 
 CMD ["/start.sh"]
